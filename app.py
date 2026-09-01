@@ -74,22 +74,50 @@ if archivo_subido:
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
-    # Filtro deslizante inteligente para aislar los casos críticos
     max_dias = int(df['DIAS_NUM'].max()) if not df['DIAS_NUM'].empty else 0
     filtro_dias = st.sidebar.slider("Mínimo de días vencidos:", min_value=0, max_value=max_dias, value=0)
     
-    # Aplicar todos los filtros simultáneamente
     df_filtrado = df[
         (df['ESTADO ORDEN'].isin(filtro_estado)) & 
         (df['ESTADO PLANILLA'].isin(filtro_planilla)) &
         (df['DIAS_NUM'] >= filtro_dias)
     ]
     
-    # KPIs
-    col1, col2, col3 = st.columns(3)
-    col1.metric("💰 OS PARA FACTURAR", df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique())
-    col2.metric("📂 OS ABIERTAS", df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique())
-    col3.metric("🔒 OS CERRADAS", df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA']['Numero Orden'].nunique())
+    # --- BLOQUE 1: KPIs POR ÓRDENES ÚNICAS ---
+    st.markdown("**Resumen General por Órdenes**")
+    total_ordenes = df_filtrado['Numero Orden'].nunique()
+    ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique()
+    ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique()
+    ord_cerradas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA']['Numero Orden'].nunique()
+    
+    pct_ord_facturar = (ord_facturar / total_ordenes * 100) if total_ordenes > 0 else 0
+    pct_ord_abiertas = (ord_abiertas / total_ordenes * 100) if total_ordenes > 0 else 0
+    pct_ord_cerradas = (ord_cerradas / total_ordenes * 100) if total_ordenes > 0 else 0
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("📊 TOTAL ÓRDENES", total_ordenes)
+    col2.metric("💰 ORDEN PARA FACTURAR", ord_facturar, f"{pct_ord_facturar:.1f}% del total", delta_color="off")
+    col3.metric("📂 ÓRDENES ABIERTAS", ord_abiertas, f"{pct_ord_abiertas:.1f}% del total", delta_color="off")
+    col4.metric("🔒 ÓRDENES CERRADAS", ord_cerradas, f"{pct_ord_cerradas:.1f}% del total", delta_color="off")
+    
+    st.divider()
+    
+    # --- BLOQUE 2: KPIs POR SERVICIOS (VIAJES) ---
+    st.markdown("**Resumen Operativo por Servicios (Viajes Individuales)**")
+    total_servicios = len(df_filtrado)
+    serv_facturar = len(df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR'])
+    serv_abiertas = len(df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA'])
+    serv_cerradas = len(df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA'])
+    
+    pct_serv_facturar = (serv_facturar / total_servicios * 100) if total_servicios > 0 else 0
+    pct_serv_abiertas = (serv_abiertas / total_servicios * 100) if total_servicios > 0 else 0
+    pct_serv_cerradas = (serv_cerradas / total_servicios * 100) if total_servicios > 0 else 0
+    
+    col5, col6, col7, col8 = st.columns(4)
+    col5.metric("🚚 TOTAL SERVICIOS", total_servicios)
+    col6.metric("💰 ORDEN PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
+    col7.metric("📂 ÓRDENES ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
+    col8.metric("🔒 ÓRDENES CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
     
     st.divider()
     
