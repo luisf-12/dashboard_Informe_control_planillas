@@ -13,7 +13,7 @@ if archivo_subido:
     # 1. Limpieza a 14 caracteres
     df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
     
-    # Asegurar formato de fechas (Fuerza Día/Mes/Año) y limpieza de la columna Planilla
+    # Asegurar formato de fechas y limpieza
     df['Fecha'] = pd.to_datetime(df['Fecha'].astype(str).str.strip(), dayfirst=True, errors='coerce')
     df['Planilla'] = df['Planilla'].astype(str).str.strip().str.upper()
     
@@ -36,7 +36,7 @@ if archivo_subido:
             
     df['ESTADO ORDEN'] = df.apply(asignar_estado_orden, axis=1)
     
-    # 4. Días Vencimiento (Cálculo numérico base)
+    # 4. Días Vencimiento
     def calcular_dias_numericos(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             return (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
@@ -46,7 +46,6 @@ if archivo_subido:
         
     df['DIAS_NUM'] = df.apply(calcular_dias_numericos, axis=1)
     
-    # Columna de Días Vencimiento para mostrar
     def mostrar_dias_vencimiento(row):
         if row['ESTADO ORDEN'] == 'CERRADA' or (row['ESTADO ORDEN'] == 'ABIERTA' and row['Planilla'] == 'NO'):
             return str(row['DIAS_NUM'])
@@ -85,8 +84,27 @@ if archivo_subido:
     
     st.divider()
     
-    columnas_vista = ['Numero Orden', 'CANTIDAD VIAJES', 'Fecha', 'Planilla', 'ESTADO ORDEN', 'DIAS VENCIMIENTO', 'ESTADO PLANILLA']
-    st.dataframe(df_filtrado[columnas_vista], use_container_width=True, hide_index=True)
+    # --- NUEVA TABLA DETALLADA ---
+    st.markdown("**Detalle Operativo de Servicios**")
+    
+    # 1. Seleccionamos las columnas exactas que quieres ver
+    columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO']
+    df_mostrar = df_filtrado[columnas_base].copy()
+    
+    # 2. Renombramos los encabezados para que coincidan con tu Excel
+    df_mostrar.rename(columns={
+        'Numero Orden': 'ORDEN SERVICIO',
+        'Paciente': 'PACIENTE',
+        'Fecha': 'FECHA DEL SERVICIO',
+        'Vehiculo': 'VEHICULO',
+        'TIPO': 'TIPO'
+    }, inplace=True)
+    
+    # 3. Formateamos la fecha para quitarle los ceros de la hora (00:00:00) y dejarla como Día/Mes/Año
+    df_mostrar['FECHA DEL SERVICIO'] = df_mostrar['FECHA DEL SERVICIO'].dt.strftime('%d/%m/%Y')
+    
+    # 4. Mostramos la tabla final
+    st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
 
 else:
     st.info("Esperando el archivo de Cronos para generar el dashboard...")
