@@ -84,7 +84,7 @@ if archivo_subido:
     ]
     
     # --- BLOQUE 1: KPIs POR ÓRDENES ÚNICAS ---
-    st.markdown("**Resumen General por Órdenes**")
+    st.markdown("**Resumen General por Órdenes Únicas**")
     total_ordenes = df_filtrado['Numero Orden'].nunique()
     ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique()
     ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique()
@@ -115,10 +115,23 @@ if archivo_subido:
     
     col5, col6, col7, col8 = st.columns(4)
     col5.metric("🚚 TOTAL SERVICIOS", total_servicios)
-    col6.metric("💰 ORDEN PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
-    col7.metric("📂 ÓRDENES ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
-    col8.metric("🔒 ÓRDENES CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
+    col6.metric("💰 OS PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
+    col7.metric("📂 OS ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
+    col8.metric("🔒 OS CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
     
+    st.divider()
+    
+    # --- BLOQUE 3: DESGLOSE POR ESTADO DE PLANILLA ---
+    st.markdown("**Desglose de Servicios por Estado de Planilla**")
+    if total_servicios > 0:
+        df_desglose = df_filtrado.groupby('ESTADO PLANILLA').size().reset_index(name='Cantidad de Servicios')
+        df_desglose['Porcentaje del Total'] = (df_desglose['Cantidad de Servicios'] / total_servicios * 100).map("{:.1f}%".format)
+        
+        # Mostramos una mini-tabla dinámica y limpia
+        st.dataframe(df_desglose, use_container_width=True, hide_index=True)
+    else:
+        st.info("No hay servicios para mostrar con los filtros actuales.")
+        
     st.divider()
     
     # --- TABLA DETALLADA ---
