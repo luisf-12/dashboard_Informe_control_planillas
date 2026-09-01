@@ -4,7 +4,7 @@ from datetime import datetime
 import io
 
 st.set_page_config(page_title="Control de Planillas", layout="wide")
-st.title(" Emprestur - Dashboard informe sura pacientes")
+st.title(" Emprestur - Dashboard de Control - Sura Pacienrtes")
 
 archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
