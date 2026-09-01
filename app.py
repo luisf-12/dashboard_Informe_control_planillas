@@ -74,7 +74,16 @@ if archivo_subido:
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
-    df_filtrado = df[(df['ESTADO ORDEN'].isin(filtro_estado)) & (df['ESTADO PLANILLA'].isin(filtro_planilla))]
+    # Filtro deslizante inteligente para aislar los casos críticos
+    max_dias = int(df['DIAS_NUM'].max()) if not df['DIAS_NUM'].empty else 0
+    filtro_dias = st.sidebar.slider("Mínimo de días vencidos:", min_value=0, max_value=max_dias, value=0)
+    
+    # Aplicar todos los filtros simultáneamente
+    df_filtrado = df[
+        (df['ESTADO ORDEN'].isin(filtro_estado)) & 
+        (df['ESTADO PLANILLA'].isin(filtro_planilla)) &
+        (df['DIAS_NUM'] >= filtro_dias)
+    ]
     
     # KPIs
     col1, col2, col3 = st.columns(3)
@@ -84,14 +93,12 @@ if archivo_subido:
     
     st.divider()
     
-    # --- NUEVA TABLA DETALLADA ---
+    # --- TABLA DETALLADA ---
     st.markdown("**Detalle Operativo de Servicios**")
     
-    # 1. Seleccionamos las columnas exactas que quieres ver
     columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO']
     df_mostrar = df_filtrado[columnas_base].copy()
     
-    # 2. Renombramos los encabezados para que coincidan con tu Excel
     df_mostrar.rename(columns={
         'Numero Orden': 'ORDEN SERVICIO',
         'Paciente': 'PACIENTE',
@@ -100,10 +107,8 @@ if archivo_subido:
         'TIPO': 'TIPO'
     }, inplace=True)
     
-    # 3. Formateamos la fecha para quitarle los ceros de la hora (00:00:00) y dejarla como Día/Mes/Año
     df_mostrar['FECHA DEL SERVICIO'] = df_mostrar['FECHA DEL SERVICIO'].dt.strftime('%d/%m/%Y')
     
-    # 4. Mostramos la tabla final
     st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
 
 else:
