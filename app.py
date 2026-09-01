@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import io
 
 st.set_page_config(page_title="Control de Planillas", layout="wide")
 st.title("🚛 Emprestur - Dashboard de Planillas")
@@ -69,7 +70,6 @@ if archivo_subido:
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
     
     # --- INTERFAZ DEL DASHBOARD ---
-    
     st.sidebar.markdown("**Filtros de Búsqueda**")
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
@@ -126,8 +126,6 @@ if archivo_subido:
     if total_servicios > 0:
         df_desglose = df_filtrado.groupby('ESTADO PLANILLA').size().reset_index(name='Cantidad de Servicios')
         df_desglose['Porcentaje del Total'] = (df_desglose['Cantidad de Servicios'] / total_servicios * 100).map("{:.1f}%".format)
-        
-        # Mostramos una mini-tabla dinámica y limpia
         st.dataframe(df_desglose, use_container_width=True, hide_index=True)
     else:
         st.info("No hay servicios para mostrar con los filtros actuales.")
@@ -151,6 +149,22 @@ if archivo_subido:
     df_mostrar['FECHA DEL SERVICIO'] = df_mostrar['FECHA DEL SERVICIO'].dt.strftime('%d/%m/%Y')
     
     st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
+    
+    # --- BOTÓN DE DESCARGA EXCEL ---
+    def convertir_df_a_excel(df_exportar):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_exportar.to_excel(writer, index=False, sheet_name='Servicios_Filtrados')
+        return output.getvalue()
+        
+    datos_excel = convertir_df_a_excel(df_mostrar)
+    
+    st.download_button(
+        label="📥 Descargar tabla filtrada en formato Excel (.xlsx)",
+        data=datos_excel,
+        file_name=f"Reporte_Planillas_{datetime.now().strftime('%d-%m-%Y')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 else:
     st.info("Esperando el archivo de Cronos para generar el dashboard...")
