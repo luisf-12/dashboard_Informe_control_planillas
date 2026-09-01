@@ -13,11 +13,11 @@ if archivo_subido:
     # 1. Limpieza a 14 caracteres
     df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
     
-    # Asegurar formato de fechas y limpieza de la columna Planilla
-    df['Fecha'] = pd.to_datetime(df['Fecha'], errors='coerce')
+    # Asegurar formato de fechas (Fuerza Día/Mes/Año) y limpieza de la columna Planilla
+    df['Fecha'] = pd.to_datetime(df['Fecha'].astype(str).str.strip(), dayfirst=True, errors='coerce')
     df['Planilla'] = df['Planilla'].astype(str).str.strip().str.upper()
     
-    # 2. Cantidad de Viajes (Equivalente a CONTAR.SI)
+    # 2. Cantidad de Viajes
     df['CANTIDAD VIAJES'] = df.groupby('Numero Orden')['Numero Orden'].transform('count')
     
     # 3. Estado de la Orden
@@ -36,7 +36,7 @@ if archivo_subido:
             
     df['ESTADO ORDEN'] = df.apply(asignar_estado_orden, axis=1)
     
-    # 4. Días Vencimiento (Cálculo interno numérico para evitar errores matemáticos)
+    # 4. Días Vencimiento (Cálculo numérico base)
     def calcular_dias_numericos(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             return (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
@@ -46,7 +46,7 @@ if archivo_subido:
         
     df['DIAS_NUM'] = df.apply(calcular_dias_numericos, axis=1)
     
-    # Columna de Días Vencimiento para mostrar (Aplica el "AL DÍA")
+    # Columna de Días Vencimiento para mostrar
     def mostrar_dias_vencimiento(row):
         if row['ESTADO ORDEN'] == 'CERRADA' or (row['ESTADO ORDEN'] == 'ABIERTA' and row['Planilla'] == 'NO'):
             return str(row['DIAS_NUM'])
@@ -71,14 +71,13 @@ if archivo_subido:
     
     # --- INTERFAZ DEL DASHBOARD ---
     
-    # Filtros interactivos
     st.sidebar.markdown("**Filtros de Búsqueda**")
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
     df_filtrado = df[(df['ESTADO ORDEN'].isin(filtro_estado)) & (df['ESTADO PLANILLA'].isin(filtro_planilla))]
     
-    # KPIs: Órdenes Únicas
+    # KPIs
     col1, col2, col3 = st.columns(3)
     col1.metric("💰 OS PARA FACTURAR", df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique())
     col2.metric("📂 OS ABIERTAS", df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique())
@@ -86,7 +85,6 @@ if archivo_subido:
     
     st.divider()
     
-    # Columnas finales a mostrar en pantalla
     columnas_vista = ['Numero Orden', 'CANTIDAD VIAJES', 'Fecha', 'Planilla', 'ESTADO ORDEN', 'DIAS VENCIMIENTO', 'ESTADO PLANILLA']
     st.dataframe(df_filtrado[columnas_vista], use_container_width=True, hide_index=True)
 
