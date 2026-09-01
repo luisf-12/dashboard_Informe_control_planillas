@@ -4,7 +4,7 @@ from datetime import datetime
 import io
 
 st.set_page_config(page_title="Control de Planillas", layout="wide")
-st.title("🚛 Emprestur - Dashboard de Planillas")
+st.title(" Emprestur - Dashboard informe sura pacientes")
 
 archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
@@ -96,9 +96,9 @@ if archivo_subido:
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("📊 TOTAL ÓRDENES", total_ordenes)
-    col2.metric("💰 ORDEN PARA FACTURAR", ord_facturar, f"{pct_ord_facturar:.1f}% del total", delta_color="off")
-    col3.metric("📂 ÓRDENES ABIERTAS", ord_abiertas, f"{pct_ord_abiertas:.1f}% del total", delta_color="off")
-    col4.metric("🔒 ÓRDENES CERRADAS", ord_cerradas, f"{pct_ord_cerradas:.1f}% del total", delta_color="off")
+    col2.metric(" ORDEN PARA FACTURAR", ord_facturar, f"{pct_ord_facturar:.1f}% del total", delta_color="off")
+    col3.metric(" ÓRDENES ABIERTAS", ord_abiertas, f"{pct_ord_abiertas:.1f}% del total", delta_color="off")
+    col4.metric(" ÓRDENES CERRADAS", ord_cerradas, f"{pct_ord_cerradas:.1f}% del total", delta_color="off")
     
     st.divider()
     
@@ -115,9 +115,9 @@ if archivo_subido:
     
     col5, col6, col7, col8 = st.columns(4)
     col5.metric("🚚 TOTAL SERVICIOS", total_servicios)
-    col6.metric("💰 OS PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
-    col7.metric("📂 OS ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
-    col8.metric("🔒 OS CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
+    col6.metric(" OS PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
+    col7.metric(" OS ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
+    col8.metric(" OS CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
     
     st.divider()
     
@@ -160,7 +160,7 @@ if archivo_subido:
     datos_excel = convertir_df_a_excel(df_mostrar)
     
     st.download_button(
-        label="📥 Descargar tabla filtrada en formato Excel (.xlsx)",
+        label="📥 Descargar tabla (.xlsx)",
         data=datos_excel,
         file_name=f"Reporte_Planillas_{datetime.now().strftime('%d-%m-%Y')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
