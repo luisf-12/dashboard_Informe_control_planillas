@@ -31,6 +31,7 @@ st.title("📊 Emprestur - Dashboard de Control - Sura Pacientes")
 archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
 if archivo_subido is not None:
+    # Captura la hora exacta de Colombia al momento de subir
     ahora = datetime.now(ZONA_COLOMBIA)
     timestamp = ahora.strftime("%Y%m%d_%H%M%S")
     nombre_guardado = f"Cronos_Reporte_{timestamp}.xlsx"
@@ -44,15 +45,12 @@ if archivo_subido is not None:
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
-# 1. Reservamos el espacio superior para los Filtros
 st.sidebar.markdown("**🔍 Filtros de Búsqueda**")
 contenedor_filtros = st.sidebar.container()
 
-# 2. Empujamos el historial hacia abajo con un espacio en blanco y un divisor
 st.sidebar.markdown("<br><br><br><br>", unsafe_allow_html=True) 
 st.sidebar.divider()
 
-# 3. Reservamos el espacio inferior para el Historial
 contenedor_historial = st.sidebar.container()
 contenedor_historial.markdown("**📂 Historial de Reportes**")
 
@@ -62,7 +60,7 @@ archivos_disponibles = sorted(
 )
 
 def formatear_nombre_reporte(nombre_archivo):
-    """Convierte el nombre técnico en una fecha fácil de leer para la jefa."""
+    """Convierte el timestamp técnico a formato visual de fecha y hora (12h)."""
     try:
         parte_fecha = nombre_archivo.replace("Cronos_Reporte_", "").replace(".xlsx", "")
         dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
@@ -76,7 +74,6 @@ def formatear_nombre_reporte(nombre_archivo):
 
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    # Selector de historial (Renderizado al fondo del panel izquierdo)
     archivo_seleccionado = contenedor_historial.selectbox(
         "Selecciona el reporte a visualizar:", 
         options=archivos_disponibles,
@@ -96,7 +93,7 @@ if archivos_disponibles:
     df['FECHA_MAX'] = df.groupby('Numero Orden')['Fecha'].transform('max')
     df['PLANILLAS_OK'] = df.groupby('Numero Orden')['Planilla'].transform(lambda x: (x == 'SI').all())
     
-    # Se evalúa contra la fecha exacta de consulta (Colombia)
+    # Fecha exacta de Colombia para validar reglas de negocio operativas
     hoy = pd.Timestamp(datetime.now(ZONA_COLOMBIA).date())
     
     def asignar_estado_orden(row):
@@ -139,7 +136,7 @@ if archivos_disponibles:
         
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
     
-    # --- RENDERIZADO DE FILTROS (En la parte SUPERIOR del panel lateral) ---
+    # --- RENDERIZADO DE FILTROS ---
     filtro_estado = contenedor_filtros.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = contenedor_filtros.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
@@ -237,4 +234,4 @@ if archivos_disponibles:
     )
 
 else:
-    st.info("Aún no hay datos. Sube el primer archivo de Cronos para generar el dashboard.")
+    st.info("👋 ¡Bienvenido! Aún no hay datos. Sube el primer archivo de Cronos para generar el dashboard.")
