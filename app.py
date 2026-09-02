@@ -2,11 +2,12 @@ import os
 import io
 import pandas as pd
 import streamlit as st
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
-# --- CONFIGURACIÓN Y POLÍTICA DE RETENCIÓN ---
+# --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
 LIMITE_HISTORIAL = 5
+ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
     os.makedirs(CARPETA_HISTORIAL)
@@ -26,11 +27,12 @@ def aplicar_politica_retencion(carpeta, limite):
 st.set_page_config(page_title="Control de Planillas", layout="wide")
 st.title("📊 Emprestur - Dashboard de Control - Sura Pacientes")
 
-# --- CARGADOR PRINCIPAL (CENTRO/ARRIBA COMO EN LA IMAGEN) ---
+# --- CARGADOR PRINCIPAL (CENTRO/ARRIBA) ---
 archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
 if archivo_subido is not None:
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ahora = datetime.now(ZONA_COLOMBIA)
+    timestamp = ahora.strftime("%Y%m%d_%H%M%S")
     nombre_guardado = f"Cronos_Reporte_{timestamp}.xlsx"
     ruta_guardado = os.path.join(CARPETA_HISTORIAL, nombre_guardado)
     
@@ -38,7 +40,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente. Selecciona la nueva versión en el historial si no se actualiza solo.")
+    st.success("Reporte guardado exitosamente. Selecciona la nueva versión en el historial.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
@@ -59,13 +61,27 @@ archivos_disponibles = sorted(
     reverse=True
 )
 
+def formatear_nombre_reporte(nombre_archivo):
+    """Convierte el nombre técnico en una fecha fácil de leer para la jefa."""
+    try:
+        parte_fecha = nombre_archivo.replace("Cronos_Reporte_", "").replace(".xlsx", "")
+        dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
+        formato = dt.strftime("%d/%m/%Y — %I:%M %p")
+        
+        if nombre_archivo == archivos_disponibles[0]:
+            return f"🟢 {formato} (Más reciente)"
+        return f"📄 {formato}"
+    except Exception:
+        return nombre_archivo
+
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    # La Jefa selecciona la versión (Se renderiza visualmente en la parte INFERIOR)
+    # Selector de historial (Renderizado al fondo del panel izquierdo)
     archivo_seleccionado = contenedor_historial.selectbox(
         "Selecciona el reporte a visualizar:", 
-        archivos_disponibles,
+        options=archivos_disponibles,
         index=0,
+        format_func=formatear_nombre_reporte,
         label_visibility="collapsed"
     )
     
@@ -80,7 +96,8 @@ if archivos_disponibles:
     df['FECHA_MAX'] = df.groupby('Numero Orden')['Fecha'].transform('max')
     df['PLANILLAS_OK'] = df.groupby('Numero Orden')['Planilla'].transform(lambda x: (x == 'SI').all())
     
-    hoy = pd.Timestamp(datetime.today().date())
+    # Se evalúa contra la fecha exacta de consulta (Colombia)
+    hoy = pd.Timestamp(datetime.now(ZONA_COLOMBIA).date())
     
     def asignar_estado_orden(row):
         if row['PLANILLAS_OK']:
@@ -137,7 +154,7 @@ if archivos_disponibles:
     
     # --- KPIs Y TABLAS PRINCIPALES ---
     st.divider()
-    st.markdown(f"**Resumen General por Órdenes Únicas (Archivo cargado: {archivo_seleccionado})**")
+    st.markdown(f"**Resumen General por Órdenes Únicas**")
     
     total_ordenes = df_filtrado['Numero Orden'].nunique()
     ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique()
@@ -215,7 +232,7 @@ if archivos_disponibles:
     st.download_button(
         label="📥 Descargar tabla filtrada (.xlsx)",
         data=datos_excel,
-        file_name=f"Reporte_Planillas_{datetime.now().strftime('%d-%m-%Y')}.xlsx",
+        file_name=f"Reporte_Planillas_{datetime.now(ZONA_COLOMBIA).strftime('%d-%m-%Y')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
