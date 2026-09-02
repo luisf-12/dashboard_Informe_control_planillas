@@ -6,22 +6,11 @@ import io
 st.set_page_config(page_title="Control de Planillas", layout="wide")
 st.title(" Emprestur - Dashboard de Control - Sura Pacientes")
 
-# --- 1. CONFIGURACIÓN DE LA FUENTE DE DATOS HÍBRIDA ---
-URL_ONEDRIVE = "https://emprestur-my.sharepoint.com/:x:/p/luis_chaverra/IQCniaGiK1XrR6dzDOreyyoDAXAendwEvcJpBkYumwJ11sk?download=1"
+archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
-st.sidebar.markdown("**Herramienta Operativa**")
-archivo_subido = st.sidebar.file_uploader("Auxiliar: Carga un corte temporal aquí (Opcional)", type=["xlsx"])
-
-try:
-    # --- 2. DECISIÓN DE LECTURA (JEFA VS AUXILIAR) ---
-    if archivo_subido is not None:
-        df = pd.read_excel(archivo_subido)
-        st.success("📂 Visualizando corte temporal cargado manualmente.")
-    else:
-        df = pd.read_excel(URL_ONEDRIVE)
-        st.caption("☁️ Visualizando la base oficial sincronizada desde OneDrive.")
-
-    # --- 3. LIMPIEZA Y TRANSFORMACIÓN DE DATOS ---
+if archivo_subido:
+    df = pd.read_excel(archivo_subido)
+    
     # 1. Limpieza a 14 caracteres
     df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
     
@@ -80,7 +69,7 @@ try:
         
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
     
-    # --- 4. INTERFAZ DEL DASHBOARD ---
+    # --- INTERFAZ DEL DASHBOARD ---
     st.sidebar.markdown("**Filtros de Búsqueda**")
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
@@ -177,5 +166,5 @@ try:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-except Exception as e:
-    st.error(f"Error al cargar la base de datos. Detalle técnico: {e}")
+else:
+    st.info("Esperando el archivo de Cronos para generar el dashboard...")
