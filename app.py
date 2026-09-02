@@ -7,7 +7,7 @@ st.set_page_config(page_title="Control de Planillas", layout="wide")
 st.title(" Emprestur - Dashboard de Control - Sura Pacientes")
 
 # --- 1. CONFIGURACIÓN DE LA FUENTE DE DATOS HÍBRIDA ---
-URL_ONEDRIVE = "https://emprestur-my.sharepoint.com/:x:/p/luis_chaverra/IQCniaGiK1XrR6dzDOreyyoDARDlHVTBFIEYS4tsCMbHxOY?download=1"
+URL_ONEDRIVE = "https://emprestur-my.sharepoint.com/:x:/p/luis_chaverra/IQCniaGiK1XrR6dzDOreyyoDAXAendwEvcJpBkYumwJ11sk?download=1"
 
 st.sidebar.markdown("**Herramienta Operativa**")
 archivo_subido = st.sidebar.file_uploader("Auxiliar: Carga un corte temporal aquí (Opcional)", type=["xlsx"])
