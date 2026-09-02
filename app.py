@@ -2,15 +2,18 @@ import os
 import io
 import pandas as pd
 import streamlit as st
+from datetime import datetime, timedelta, timezone
 
-# --- CONFIGURACIÓN Y POLÍTICA DE RETENCIÓN ---
+# --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
 LIMITE_HISTORIAL = 5
+ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
     os.makedirs(CARPETA_HISTORIAL)
 
 def aplicar_politica_retencion(carpeta, limite):
+    """Mantiene solo los 'limite' archivos más recientes y elimina los antiguos."""
     archivos = [f for f in os.listdir(carpeta) if f.endswith(".xlsx")]
     archivos_ordenados = sorted(archivos, reverse=True)
     
@@ -28,8 +31,8 @@ st.title("📊 Emprestur - Dashboard de Control - Sura Pacientes")
 archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
 
 if archivo_subido is not None:
-    # Uso del motor de Pandas para forzar la hora de Colombia de forma estricta
-    ahora = pd.Timestamp.now(tz='America/Bogota')
+    # Captura la hora exacta de Colombia al momento de subir
+    ahora = datetime.now(ZONA_COLOMBIA)
     timestamp = ahora.strftime("%Y%m%d_%H%M%S")
     nombre_guardado = f"Cronos_Reporte_{timestamp}.xlsx"
     ruta_guardado = os.path.join(CARPETA_HISTORIAL, nombre_guardado)
@@ -41,7 +44,7 @@ if archivo_subido is not None:
     st.success("Reporte guardado exitosamente. Selecciona la nueva versión en el historial.")
     st.rerun()
 
-# --- ESTRUCTURA VISUAL DEL PANEL LATERAL ---
+# --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
 st.sidebar.markdown("**🔍 Filtros de Búsqueda**")
 contenedor_filtros = st.sidebar.container()
 
@@ -57,10 +60,10 @@ archivos_disponibles = sorted(
 )
 
 def formatear_nombre_reporte(nombre_archivo):
+    """Convierte el timestamp técnico a formato visual de fecha y hora (12h)."""
     try:
         parte_fecha = nombre_archivo.replace("Cronos_Reporte_", "").replace(".xlsx", "")
-        # Parseo directo con Pandas
-        dt = pd.to_datetime(parte_fecha, format="%Y%m%d_%H%M%S")
+        dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
         formato = dt.strftime("%d/%m/%Y — %I:%M %p")
         
         if nombre_archivo == archivos_disponibles[0]:
@@ -82,6 +85,7 @@ if archivos_disponibles:
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
     df = pd.read_excel(ruta_leer)
     
+    # --- TRANSFORMACIÓN DE DATOS ---
     df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
     df['Fecha'] = pd.to_datetime(df['Fecha'].astype(str).str.strip(), dayfirst=True, errors='coerce')
     df['Planilla'] = df['Planilla'].astype(str).str.strip().str.upper()
@@ -89,8 +93,8 @@ if archivos_disponibles:
     df['FECHA_MAX'] = df.groupby('Numero Orden')['Fecha'].transform('max')
     df['PLANILLAS_OK'] = df.groupby('Numero Orden')['Planilla'].transform(lambda x: (x == 'SI').all())
     
-    # Hora local para evaluar las reglas operativas de estados
-    hoy = pd.Timestamp.now(tz='America/Bogota').normalize()
+    # Fecha exacta de Colombia para validar reglas de negocio operativas
+    hoy = pd.Timestamp(datetime.now(ZONA_COLOMBIA).date())
     
     def asignar_estado_orden(row):
         if row['PLANILLAS_OK']:
@@ -225,7 +229,7 @@ if archivos_disponibles:
     st.download_button(
         label="📥 Descargar tabla filtrada (.xlsx)",
         data=datos_excel,
-        file_name=f"Reporte_Planillas_{pd.Timestamp.now(tz='America/Bogota').strftime('%d-%m-%Y')}.xlsx",
+        file_name=f"Reporte_Planillas_{datetime.now(ZONA_COLOMBIA).strftime('%d-%m-%Y')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
