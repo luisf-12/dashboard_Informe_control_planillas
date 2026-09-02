@@ -1,15 +1,66 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
+import os
 import io
+import pandas as pd
+import streamlit as st
+from datetime import datetime
+
+# --- CONFIGURACIÓN Y POLÍTICA DE RETENCIÓN ---
+CARPETA_HISTORIAL = "historial_archivos"
+LIMITE_HISTORIAL = 5
+
+if not os.path.exists(CARPETA_HISTORIAL):
+    os.makedirs(CARPETA_HISTORIAL)
+
+def aplicar_politica_retencion(carpeta, limite):
+    """Mantiene solo los 'limite' archivos más recientes y elimina los antiguos."""
+    archivos = [f for f in os.listdir(carpeta) if f.endswith(".xlsx")]
+    archivos_ordenados = sorted(archivos, reverse=True)
+    
+    if len(archivos_ordenados) > limite:
+        for archivo in archivos_ordenados[limite:]:
+            try:
+                os.remove(os.path.join(carpeta, archivo))
+            except OSError:
+                pass
 
 st.set_page_config(page_title="Control de Planillas", layout="wide")
-st.title(" Emprestur - Dashboard de Control - Sura Pacientes")
+st.title("📊 Emprestur - Dashboard de Control - Sura Pacientes")
 
-archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (Excel)", type=["xlsx"])
+# --- PANEL LATERAL: CARGA Y SELECCIÓN DE HISTORIAL ---
+with st.sidebar:
+    st.markdown("**📥 Actualización de Datos (Auxiliar)**")
+    archivo_subido = st.file_uploader("Sube el archivo exportado de Cronos (.xlsx)", type=["xlsx"])
+    
+    if archivo_subido is not None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        nombre_guardado = f"Cronos_Reporte_{timestamp}.xlsx"
+        ruta_guardado = os.path.join(CARPETA_HISTORIAL, nombre_guardado)
+        
+        with open(ruta_guardado, "wb") as f:
+            f.write(archivo_subido.getbuffer())
+            
+        aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
+        st.success(f"Reporte guardado exitosamente.")
+        st.rerun()
 
-if archivo_subido:
-    df = pd.read_excel(archivo_subido)
+    st.divider()
+    st.markdown("**📂 Historial de Reportes**")
+    archivos_disponibles = sorted(
+        [f for f in os.listdir(CARPETA_HISTORIAL) if f.endswith(".xlsx")], 
+        reverse=True
+    )
+
+# --- PROCESAMIENTO Y DASHBOARD ---
+if archivos_disponibles:
+    # La Jefa selecciona la versión (por defecto la más reciente)
+    archivo_seleccionado = st.sidebar.selectbox(
+        "Selecciona el reporte a visualizar:", 
+        archivos_disponibles,
+        index=0
+    )
+    
+    ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
+    df = pd.read_excel(ruta_leer)
     
     # 1. Limpieza a 14 caracteres
     df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
@@ -70,7 +121,8 @@ if archivo_subido:
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
     
     # --- INTERFAZ DEL DASHBOARD ---
-    st.sidebar.markdown("**Filtros de Búsqueda**")
+    st.sidebar.divider()
+    st.sidebar.markdown("**🔍 Filtros de Búsqueda**")
     filtro_estado = st.sidebar.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = st.sidebar.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
@@ -84,7 +136,7 @@ if archivo_subido:
     ]
     
     # --- BLOQUE 1: KPIs POR ÓRDENES ÚNICAS ---
-    st.markdown("**Resumen General por Órdenes Únicas**")
+    st.markdown(f"**Resumen General por Órdenes Únicas (Archivo: {archivo_seleccionado})**")
     total_ordenes = df_filtrado['Numero Orden'].nunique()
     ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique()
     ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique()
@@ -96,9 +148,9 @@ if archivo_subido:
     
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("📊 TOTAL ÓRDENES", total_ordenes)
-    col2.metric(" ORDEN PARA FACTURAR", ord_facturar, f"{pct_ord_facturar:.1f}% del total", delta_color="off")
-    col3.metric(" ÓRDENES ABIERTAS", ord_abiertas, f"{pct_ord_abiertas:.1f}% del total", delta_color="off")
-    col4.metric(" ÓRDENES CERRADAS", ord_cerradas, f"{pct_ord_cerradas:.1f}% del total", delta_color="off")
+    col2.metric("✅ ORDEN PARA FACTURAR", ord_facturar, f"{pct_ord_facturar:.1f}% del total", delta_color="off")
+    col3.metric("⏳ ÓRDENES ABIERTAS", ord_abiertas, f"{pct_ord_abiertas:.1f}% del total", delta_color="off")
+    col4.metric("🔒 ÓRDENES CERRADAS", ord_cerradas, f"{pct_ord_cerradas:.1f}% del total", delta_color="off")
     
     st.divider()
     
@@ -115,9 +167,9 @@ if archivo_subido:
     
     col5, col6, col7, col8 = st.columns(4)
     col5.metric("🚚 TOTAL SERVICIOS", total_servicios)
-    col6.metric(" OS PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
-    col7.metric(" OS ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
-    col8.metric(" OS CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
+    col6.metric("✅ OS PARA FACTURAR", serv_facturar, f"{pct_serv_facturar:.1f}% del total", delta_color="off")
+    col7.metric("⏳ OS ABIERTAS", serv_abiertas, f"{pct_serv_abiertas:.1f}% del total", delta_color="off")
+    col8.metric("🔒 OS CERRADAS", serv_cerradas, f"{pct_serv_cerradas:.1f}% del total", delta_color="off")
     
     st.divider()
     
@@ -136,17 +188,22 @@ if archivo_subido:
     st.markdown("**Detalle Operativo de Servicios**")
     
     columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO']
-    df_mostrar = df_filtrado[columnas_base].copy()
+    # Validamos que las columnas existan en el excel original para evitar errores
+    columnas_existentes = [col for col in columnas_base if col in df_filtrado.columns]
     
-    df_mostrar.rename(columns={
+    df_mostrar = df_filtrado[columnas_existentes].copy()
+    
+    renombres = {
         'Numero Orden': 'ORDEN SERVICIO',
         'Paciente': 'PACIENTE',
         'Fecha': 'FECHA DEL SERVICIO',
         'Vehiculo': 'VEHICULO',
         'TIPO': 'TIPO'
-    }, inplace=True)
+    }
+    df_mostrar.rename(columns={k: v for k, v in renombres.items() if k in df_mostrar.columns}, inplace=True)
     
-    df_mostrar['FECHA DEL SERVICIO'] = df_mostrar['FECHA DEL SERVICIO'].dt.strftime('%d/%m/%Y')
+    if 'FECHA DEL SERVICIO' in df_mostrar.columns:
+        df_mostrar['FECHA DEL SERVICIO'] = df_mostrar['FECHA DEL SERVICIO'].dt.strftime('%d/%m/%Y')
     
     st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
     
@@ -160,11 +217,11 @@ if archivo_subido:
     datos_excel = convertir_df_a_excel(df_mostrar)
     
     st.download_button(
-        label="📥 Descargar tabla (.xlsx)",
+        label="📥 Descargar tabla filtrada (.xlsx)",
         data=datos_excel,
         file_name=f"Reporte_Planillas_{datetime.now().strftime('%d-%m-%Y')}.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 else:
-    st.info("Esperando el archivo de Cronos para generar el dashboard...")
+    st.info("Aún no hay datos. Por favor,cargar el primer archivo de Cronos en el panel lateral.")
