@@ -178,4 +178,4 @@ try:
     )
 
 except Exception as e:
-    st.error(f"Error al cargar la base de datos. Si eres la gerencia, valida que el auxiliar haya guardado el archivo oficial en OneDrive. Detalle técnico: {e}")
+    st.error(f"Error al cargar la base de datos. Detalle técnico: {e}")
