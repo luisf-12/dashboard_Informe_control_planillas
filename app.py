@@ -74,14 +74,12 @@ def formatear_nombre_reporte(nombre_archivo):
 
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    # Selecciona automáticamente el único archivo guardado
-    archivo_seleccionado = archivos_disponibles[0]
-    
-    # Muestra un mensaje fijo en lugar de un menú desplegable
-    contenedor_historial.success(f"{formatear_nombre_reporte(archivo_seleccionado)}")
-    
-    ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
-    df = pd.read_excel(ruta_leer)
+    archivo_seleccionado = contenedor_historial.selectbox(
+        "Selecciona el reporte a visualizar:", 
+        options=archivos_disponibles,
+        index=0,
+        format_func=formatear_nombre_reporte,
+        label_visibility="collapsed"
     )
     
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
