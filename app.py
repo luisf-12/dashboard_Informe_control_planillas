@@ -42,6 +42,8 @@ if archivo_subido is not None:
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
     st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
+    
+    # Mantenemos st.rerun() para que la página se actualice inmediatamente de forma automática
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
