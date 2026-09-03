@@ -41,7 +41,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente. Selecciona la nueva versión en el historial.")
+    st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
@@ -52,7 +52,7 @@ st.sidebar.markdown("<br><br><br><br>", unsafe_allow_html=True)
 st.sidebar.divider()
 
 contenedor_historial = st.sidebar.container()
-contenedor_historial.markdown("**📂 Historial de Reportes**")
+contenedor_historial.markdown("**📂 Reporte Actual**")
 
 archivos_disponibles = sorted(
     [f for f in os.listdir(CARPETA_HISTORIAL) if f.endswith(".xlsx")], 
@@ -66,21 +66,17 @@ def formatear_nombre_reporte(nombre_archivo):
         dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
         formato = dt.strftime("%d/%m/%Y — %I:%M %p")
         
-        if nombre_archivo == archivos_disponibles[0]:
-            return f"🟢 {formato} (Más reciente)"
-        return f"📄 {formato}"
+        return f"🟢 {formato}"
     except Exception:
         return nombre_archivo
 
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    archivo_seleccionado = contenedor_historial.selectbox(
-        "Selecciona el reporte a visualizar:", 
-        options=archivos_disponibles,
-        index=0,
-        format_func=formatear_nombre_reporte,
-        label_visibility="collapsed"
-    )
+    # Selecciona automáticamente el único archivo disponible
+    archivo_seleccionado = archivos_disponibles[0]
+    
+    # Muestra el nombre formateado del archivo directamente como un mensaje de éxito, sin desplegable
+    contenedor_historial.success(f"{formatear_nombre_reporte(archivo_seleccionado)}")
     
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
     df = pd.read_excel(ruta_leer)
