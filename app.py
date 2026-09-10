@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
-LIMITE_HISTORIAL = 1
+LIMITE_HISTORIAL = 1  # Cambiado a 1 para guardar solo el último archivo
 ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
@@ -41,7 +41,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
+    st.success("Reporte guardado exitosamente. Presione  F5 para actualizar.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
@@ -52,7 +52,7 @@ st.sidebar.markdown("<br><br><br><br>", unsafe_allow_html=True)
 st.sidebar.divider()
 
 contenedor_historial = st.sidebar.container()
-contenedor_historial.markdown("**📂 Historial de Reportes**")
+contenedor_historial.markdown("**📂 Reporte Actual**")
 
 archivos_disponibles = sorted(
     [f for f in os.listdir(CARPETA_HISTORIAL) if f.endswith(".xlsx")], 
@@ -66,21 +66,17 @@ def formatear_nombre_reporte(nombre_archivo):
         dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
         formato = dt.strftime("%d/%m/%Y — %I:%M %p")
         
-        if archivos_disponibles and nombre_archivo == archivos_disponibles[0]:
-            return f"🟢 {formato} (Más reciente)"
-        return f"📄 {formato}"
+        return f"🟢 {formato} (Actualizado)"
     except Exception:
         return nombre_archivo
 
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    archivo_seleccionado = contenedor_historial.selectbox(
-        "Selecciona el reporte a visualizar:", 
-        options=archivos_disponibles,
-        index=0,
-        format_func=formatear_nombre_reporte,
-        label_visibility="collapsed"
-    )
+    # Seleccionamos automáticamente el único archivo disponible
+    archivo_seleccionado = archivos_disponibles[0]
+    
+    # Reemplazamos el selectbox por un recuadro verde estático (sin flechita)
+    contenedor_historial.success(f"{formatear_nombre_reporte(archivo_seleccionado)}")
     
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
     df = pd.read_excel(ruta_leer)
@@ -123,10 +119,9 @@ if archivos_disponibles:
         
     df['DIAS_NUM_SERVICIO'] = df.apply(calcular_dias_servicio_num, axis=1)
     
-    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA (AHORA RESPETA EL FORMATO NÚMERICO) ---
+    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA ---
     def dias_vencimiento_orden(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
-            # Se devuelve el número real entero, NO como texto
             return row['DIAS_NUM_ORDEN']
         elif row['ESTADO ORDEN'] == 'ABIERTA':
             return "ORDEN ABIERTA"
@@ -138,7 +133,6 @@ if archivos_disponibles:
     def dias_vencimiento_servicio(row):
         if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
             return "-"
-        # Se devuelve el número real entero, NO como texto
         return row['DIAS_NUM_SERVICIO']
 
     df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
