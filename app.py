@@ -66,7 +66,7 @@ def formatear_nombre_reporte(nombre_archivo):
         dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
         formato = dt.strftime("%d/%m/%Y — %I:%M %p")
         
-        return f"🟢 {formato} (Actualizado)"
+        return f"🟢 {formato} "
     except Exception:
         return nombre_archivo
 
