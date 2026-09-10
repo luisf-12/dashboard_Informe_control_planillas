@@ -41,7 +41,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente.Presione F5 para actualizar.")
+    st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
@@ -123,10 +123,11 @@ if archivos_disponibles:
         
     df['DIAS_NUM_SERVICIO'] = df.apply(calcular_dias_servicio_num, axis=1)
     
-    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA ---
+    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA (AHORA RESPETA EL FORMATO NÚMERICO) ---
     def dias_vencimiento_orden(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
-            return str(row['DIAS_NUM_ORDEN'])
+            # Se devuelve el número real entero, NO como texto
+            return row['DIAS_NUM_ORDEN']
         elif row['ESTADO ORDEN'] == 'ABIERTA':
             return "ORDEN ABIERTA"
         else:
@@ -137,7 +138,8 @@ if archivos_disponibles:
     def dias_vencimiento_servicio(row):
         if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
             return "-"
-        return str(row['DIAS_NUM_SERVICIO'])
+        # Se devuelve el número real entero, NO como texto
+        return row['DIAS_NUM_SERVICIO']
 
     df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
@@ -159,12 +161,12 @@ if archivos_disponibles:
     
     # Filtro Deslizante 1: Para la Orden
     max_dias_orden = int(df['DIAS_NUM_ORDEN'].max()) if not df['DIAS_NUM_ORDEN'].empty else 0
-    max_dias_orden = max_dias_orden if max_dias_orden > 0 else 1 # Evita error de min==max
+    max_dias_orden = max_dias_orden if max_dias_orden > 0 else 1 
     filtro_dias_orden = contenedor_filtros.slider("Mínimo de días vencidos (ORDEN):", min_value=0, max_value=max_dias_orden, value=0)
     
     # Filtro Deslizante 2: Para el Servicio
     max_dias_servicio = int(df['DIAS_NUM_SERVICIO'].max()) if not df['DIAS_NUM_SERVICIO'].empty else 0
-    max_dias_servicio = max_dias_servicio if max_dias_servicio > 0 else 1 # Evita error de min==max
+    max_dias_servicio = max_dias_servicio if max_dias_servicio > 0 else 1 
     filtro_dias_servicio = contenedor_filtros.slider("Mínimo de días vencidos (SERVICIO):", min_value=0, max_value=max_dias_servicio, value=0)
     
     # Aplicamos todos los filtros simultáneamente
