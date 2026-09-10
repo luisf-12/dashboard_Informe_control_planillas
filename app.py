@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
-LIMITE_HISTORIAL = 1  # Cambiado a 1 para guardar solo el último archivo
+LIMITE_HISTORIAL = 1
 ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
@@ -41,7 +41,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente. Presione  F5 para actualizar.")
+    st.success("Reporte guardado exitosamente. Presione F5 para actualizar.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
@@ -75,7 +75,7 @@ if archivos_disponibles:
     # Seleccionamos automáticamente el único archivo disponible
     archivo_seleccionado = archivos_disponibles[0]
     
-    # Reemplazamos el selectbox por un recuadro verde estático (sin flechita)
+    # Recuadro estático con el archivo actual
     contenedor_historial.success(f"{formatear_nombre_reporte(archivo_seleccionado)}")
     
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
@@ -102,40 +102,22 @@ if archivos_disponibles:
             
     df['ESTADO ORDEN'] = df.apply(asignar_estado_orden, axis=1)
     
-    # --- MOTORES NUMÉRICOS SEPARADOS PARA FILTROS ---
+    # --- MOTORES NUMÉRICOS 100% PUROS ---
     def calcular_dias_orden_num(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             dias = (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
             return dias if dias > 0 else 0
-        return 0
+        return 0 # Si es ABIERTA o FACTURAR, será 0
         
     df['DIAS_NUM_ORDEN'] = df.apply(calcular_dias_orden_num, axis=1)
 
     def calcular_dias_servicio_num(row):
         if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
-            return 0
+            return 0 # Si está lista, será 0
         dias = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
         return dias if dias > 0 else 0
         
     df['DIAS_NUM_SERVICIO'] = df.apply(calcular_dias_servicio_num, axis=1)
-    
-    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA ---
-    def dias_vencimiento_orden(row):
-        if row['ESTADO ORDEN'] == 'CERRADA':
-            return row['DIAS_NUM_ORDEN']
-        elif row['ESTADO ORDEN'] == 'ABIERTA':
-            return "ORDEN ABIERTA"
-        else:
-            return "-" 
-            
-    df['DIAS VENCIMIENTO ORDEN'] = df.apply(dias_vencimiento_orden, axis=1)
-
-    def dias_vencimiento_servicio(row):
-        if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
-            return "-"
-        return row['DIAS_NUM_SERVICIO']
-
-    df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
     # --- ESTADO DE LA PLANILLA ---
     def asignar_estado_planilla(row):
@@ -222,7 +204,8 @@ if archivos_disponibles:
     
     st.markdown("**Detalle Operativo de Servicios**")
     
-    columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO ORDEN', 'DIAS VENCIMIENTO SERVICIO']
+    # Integramos directamente los motores numéricos a la tabla
+    columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS_NUM_ORDEN', 'DIAS_NUM_SERVICIO']
     columnas_existentes = [col for col in columnas_base if col in df_filtrado.columns]
     
     df_mostrar = df_filtrado[columnas_existentes].copy()
@@ -233,8 +216,8 @@ if archivos_disponibles:
         'Fecha': 'FECHA DEL SERVICIO',
         'Vehiculo': 'VEHICULO',
         'TIPO': 'TIPO',
-        'DIAS VENCIMIENTO ORDEN': 'DÍAS VENC. ORDEN',
-        'DIAS VENCIMIENTO SERVICIO': 'DÍAS VENC. SERVICIO'
+        'DIAS_NUM_ORDEN': 'DÍAS VENC. ORDEN',
+        'DIAS_NUM_SERVICIO': 'DÍAS VENC. SERVICIO'
     }
     df_mostrar.rename(columns={k: v for k, v in renombres.items() if k in df_mostrar.columns}, inplace=True)
     
