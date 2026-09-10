@@ -139,17 +139,16 @@ if archivos_disponibles:
 
     df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
-    # Estado de la Planilla
+    # --- ESTADO DE LA PLANILLA (UNIFICADO ABIERTA/CERRADA) ---
     def asignar_estado_planilla(row):
         if row['ESTADO ORDEN'] == 'FACTURAR':
             return "FACTURAR"
         elif row['Planilla'] == 'SI':
             return "ENTREGADA"
-        elif row['ESTADO ORDEN'] == 'ABIERTA':
+        elif row['ESTADO ORDEN'] in ['ABIERTA', 'CERRADA']:
+            # Aplica la regla de los 5 días de gracia para el viaje individual, sea cual sea el estado de la orden
             dias_individual = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
             return "RETRASADA" if dias_individual > 5 else "A TIEMPO"
-        elif row['ESTADO ORDEN'] == 'CERRADA':
-            return "RETRASADA" if row['DIAS_NUM'] > 5 else "A TIEMPO"
         return "-"
         
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
