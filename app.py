@@ -106,21 +106,27 @@ if archivos_disponibles:
             
     df['ESTADO ORDEN'] = df.apply(asignar_estado_orden, axis=1)
     
-    # Columna interna para los cálculos matemáticos y filtros de slider
-    def calcular_dias_numericos(row):
-        if row['ESTADO ORDEN'] == 'CERRADA':
-            return (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
-        elif row['ESTADO ORDEN'] == 'ABIERTA' and row['Planilla'] == 'NO':
-            return (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
-        return 0
-        
-    df['DIAS_NUM'] = df.apply(calcular_dias_numericos, axis=1)
-    
-    # --- 1. DÍAS VENCIMIENTO DE LA ORDEN ---
-    def dias_vencimiento_orden(row):
+    # --- MOTORES NUMÉRICOS SEPARADOS PARA FILTROS ---
+    def calcular_dias_orden_num(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             dias = (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
-            return str(dias) if dias > 0 else "0"
+            return dias if dias > 0 else 0
+        return 0
+        
+    df['DIAS_NUM_ORDEN'] = df.apply(calcular_dias_orden_num, axis=1)
+
+    def calcular_dias_servicio_num(row):
+        if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
+            return 0
+        dias = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
+        return dias if dias > 0 else 0
+        
+    df['DIAS_NUM_SERVICIO'] = df.apply(calcular_dias_servicio_num, axis=1)
+    
+    # --- COLUMNAS DE VISUALIZACIÓN EN TABLA ---
+    def dias_vencimiento_orden(row):
+        if row['ESTADO ORDEN'] == 'CERRADA':
+            return str(row['DIAS_NUM_ORDEN'])
         elif row['ESTADO ORDEN'] == 'ABIERTA':
             return "ORDEN ABIERTA"
         else:
@@ -128,27 +134,21 @@ if archivos_disponibles:
             
     df['DIAS VENCIMIENTO ORDEN'] = df.apply(dias_vencimiento_orden, axis=1)
 
-    # --- 2. DÍAS VENCIMIENTO DEL SERVICIO (CON CORRECCIÓN DE ENTREGADAS) ---
     def dias_vencimiento_servicio(row):
-        # Corrección: Si la planilla ya se entregó o la orden ya está para facturar, no hay días vencidos
         if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
             return "-"
-            
-        dias = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
-        return str(dias) if dias > 0 else "0"
+        return str(row['DIAS_NUM_SERVICIO'])
 
     df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
-    # --- ESTADO DE LA PLANILLA (UNIFICADO ABIERTA/CERRADA) ---
+    # --- ESTADO DE LA PLANILLA ---
     def asignar_estado_planilla(row):
         if row['ESTADO ORDEN'] == 'FACTURAR':
             return "FACTURAR"
         elif row['Planilla'] == 'SI':
             return "ENTREGADA"
         elif row['ESTADO ORDEN'] in ['ABIERTA', 'CERRADA']:
-            # Aplica la regla de los 5 días de gracia para el viaje individual, sea cual sea el estado de la orden
-            dias_individual = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
-            return "RETRASADA" if dias_individual > 5 else "A TIEMPO"
+            return "RETRASADA" if row['DIAS_NUM_SERVICIO'] > 5 else "A TIEMPO"
         return "-"
         
     df['ESTADO PLANILLA'] = df.apply(asignar_estado_planilla, axis=1)
@@ -157,13 +157,22 @@ if archivos_disponibles:
     filtro_estado = contenedor_filtros.multiselect("ESTADO ORDEN:", options=df['ESTADO ORDEN'].unique(), default=df['ESTADO ORDEN'].unique())
     filtro_planilla = contenedor_filtros.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
-    max_dias = int(df['DIAS_NUM'].max()) if not df['DIAS_NUM'].empty else 0
-    filtro_dias = contenedor_filtros.slider("Mínimo de días vencidos (Aplica a Orden o Servicio):", min_value=0, max_value=max_dias, value=0)
+    # Filtro Deslizante 1: Para la Orden
+    max_dias_orden = int(df['DIAS_NUM_ORDEN'].max()) if not df['DIAS_NUM_ORDEN'].empty else 0
+    max_dias_orden = max_dias_orden if max_dias_orden > 0 else 1 # Evita error de min==max
+    filtro_dias_orden = contenedor_filtros.slider("Mínimo de días vencidos (ORDEN):", min_value=0, max_value=max_dias_orden, value=0)
     
+    # Filtro Deslizante 2: Para el Servicio
+    max_dias_servicio = int(df['DIAS_NUM_SERVICIO'].max()) if not df['DIAS_NUM_SERVICIO'].empty else 0
+    max_dias_servicio = max_dias_servicio if max_dias_servicio > 0 else 1 # Evita error de min==max
+    filtro_dias_servicio = contenedor_filtros.slider("Mínimo de días vencidos (SERVICIO):", min_value=0, max_value=max_dias_servicio, value=0)
+    
+    # Aplicamos todos los filtros simultáneamente
     df_filtrado = df[
         (df['ESTADO ORDEN'].isin(filtro_estado)) & 
         (df['ESTADO PLANILLA'].isin(filtro_planilla)) &
-        (df['DIAS_NUM'] >= filtro_dias)
+        (df['DIAS_NUM_ORDEN'] >= filtro_dias_orden) &
+        (df['DIAS_NUM_SERVICIO'] >= filtro_dias_servicio)
     ]
     
     # --- KPIs Y TABLAS PRINCIPALES ---
