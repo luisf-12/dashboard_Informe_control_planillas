@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
-LIMITE_HISTORIAL = 1
+LIMITE_HISTORIAL = 5
 ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
@@ -42,6 +42,7 @@ if archivo_subido is not None:
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
     st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
+    st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
 st.sidebar.markdown("**🔍 Filtros de Búsqueda**")
@@ -51,7 +52,7 @@ st.sidebar.markdown("<br><br><br><br>", unsafe_allow_html=True)
 st.sidebar.divider()
 
 contenedor_historial = st.sidebar.container()
-contenedor_historial.markdown("**📂 Reporte Actual**")
+contenedor_historial.markdown("**📂 Historial de Reportes**")
 
 archivos_disponibles = sorted(
     [f for f in os.listdir(CARPETA_HISTORIAL) if f.endswith(".xlsx")], 
@@ -65,17 +66,21 @@ def formatear_nombre_reporte(nombre_archivo):
         dt = datetime.strptime(parte_fecha, "%Y%m%d_%H%M%S")
         formato = dt.strftime("%d/%m/%Y — %I:%M %p")
         
-        return f"🟢 {formato}"
+        if archivos_disponibles and nombre_archivo == archivos_disponibles[0]:
+            return f"🟢 {formato} (Más reciente)"
+        return f"📄 {formato}"
     except Exception:
         return nombre_archivo
 
 # --- PROCESAMIENTO Y DASHBOARD ---
 if archivos_disponibles:
-    # Selecciona automáticamente el único archivo disponible
-    archivo_seleccionado = archivos_disponibles[0]
-    
-    # Muestra el nombre formateado del archivo directamente como un mensaje de éxito, sin desplegable
-    contenedor_historial.success(f"{formatear_nombre_reporte(archivo_seleccionado)}")
+    archivo_seleccionado = contenedor_historial.selectbox(
+        "Selecciona el reporte a visualizar:", 
+        options=archivos_disponibles,
+        index=0,
+        format_func=formatear_nombre_reporte,
+        label_visibility="collapsed"
+    )
     
     ruta_leer = os.path.join(CARPETA_HISTORIAL, archivo_seleccionado)
     df = pd.read_excel(ruta_leer)
@@ -101,6 +106,7 @@ if archivos_disponibles:
             
     df['ESTADO ORDEN'] = df.apply(asignar_estado_orden, axis=1)
     
+    # Columna interna para los cálculos matemáticos y filtros de slider
     def calcular_dias_numericos(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             return (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
@@ -110,13 +116,27 @@ if archivos_disponibles:
         
     df['DIAS_NUM'] = df.apply(calcular_dias_numericos, axis=1)
     
-    def mostrar_dias_vencimiento(row):
-        if row['ESTADO ORDEN'] == 'CERRADA' or (row['ESTADO ORDEN'] == 'ABIERTA' and row['Planilla'] == 'NO'):
-            return str(row['DIAS_NUM'])
-        return "AL DÍA"
-        
-    df['DIAS VENCIMIENTO'] = df.apply(mostrar_dias_vencimiento, axis=1)
+    # --- REQUERIMIENTO NUEVO: 1. DÍAS VENCIMIENTO DE LA ORDEN ---
+    def dias_vencimiento_orden(row):
+        if row['ESTADO ORDEN'] == 'CERRADA':
+            dias = (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
+            return str(dias) if dias > 0 else "0"
+        elif row['ESTADO ORDEN'] == 'ABIERTA':
+            return "ORDEN ABIERTA"
+        else:
+            return "-" # Caso de FACTURAR
+            
+    df['DIAS VENCIMIENTO ORDEN'] = df.apply(dias_vencimiento_orden, axis=1)
+
+    # --- REQUERIMIENTO NUEVO: 2. DÍAS VENCIMIENTO DEL SERVICIO ---
+    def dias_vencimiento_servicio(row):
+        dias = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
+        # Validamos que no muestre números negativos si la fecha no ha llegado
+        return str(dias) if dias > 0 else "0"
+
+    df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
+    # Estado de la Planilla (Usa la columna DIAS_NUM como base matemática)
     def asignar_estado_planilla(row):
         if row['ESTADO ORDEN'] == 'FACTURAR':
             return "FACTURAR"
@@ -136,7 +156,7 @@ if archivos_disponibles:
     filtro_planilla = contenedor_filtros.multiselect("ESTADO PLANILLA:", options=df['ESTADO PLANILLA'].unique(), default=df['ESTADO PLANILLA'].unique())
     
     max_dias = int(df['DIAS_NUM'].max()) if not df['DIAS_NUM'].empty else 0
-    filtro_dias = contenedor_filtros.slider("Mínimo de días vencidos:", min_value=0, max_value=max_dias, value=0)
+    filtro_dias = contenedor_filtros.slider("Mínimo de días vencidos (Aplica a Orden o Servicio):", min_value=0, max_value=max_dias, value=0)
     
     df_filtrado = df[
         (df['ESTADO ORDEN'].isin(filtro_estado)) & 
@@ -194,7 +214,9 @@ if archivos_disponibles:
     st.divider()
     
     st.markdown("**Detalle Operativo de Servicios**")
-    columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO']
+    
+    # Agregamos las dos columnas nuevas a la base que se va a mostrar
+    columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO ORDEN', 'DIAS VENCIMIENTO SERVICIO']
     columnas_existentes = [col for col in columnas_base if col in df_filtrado.columns]
     
     df_mostrar = df_filtrado[columnas_existentes].copy()
@@ -204,7 +226,9 @@ if archivos_disponibles:
         'Paciente': 'PACIENTE',
         'Fecha': 'FECHA DEL SERVICIO',
         'Vehiculo': 'VEHICULO',
-        'TIPO': 'TIPO'
+        'TIPO': 'TIPO',
+        'DIAS VENCIMIENTO ORDEN': 'DÍAS VENC. ORDEN',
+        'DIAS VENCIMIENTO SERVICIO': 'DÍAS VENC. SERVICIO'
     }
     df_mostrar.rename(columns={k: v for k, v in renombres.items() if k in df_mostrar.columns}, inplace=True)
     
