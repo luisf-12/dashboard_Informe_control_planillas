@@ -116,7 +116,7 @@ if archivos_disponibles:
         
     df['DIAS_NUM'] = df.apply(calcular_dias_numericos, axis=1)
     
-    # --- REQUERIMIENTO NUEVO: 1. DÍAS VENCIMIENTO DE LA ORDEN ---
+    # --- 1. DÍAS VENCIMIENTO DE LA ORDEN ---
     def dias_vencimiento_orden(row):
         if row['ESTADO ORDEN'] == 'CERRADA':
             dias = (hoy - row['FECHA_MAX']).days if pd.notnull(row['FECHA_MAX']) else 0
@@ -124,19 +124,22 @@ if archivos_disponibles:
         elif row['ESTADO ORDEN'] == 'ABIERTA':
             return "ORDEN ABIERTA"
         else:
-            return "-" # Caso de FACTURAR
+            return "-" 
             
     df['DIAS VENCIMIENTO ORDEN'] = df.apply(dias_vencimiento_orden, axis=1)
 
-    # --- REQUERIMIENTO NUEVO: 2. DÍAS VENCIMIENTO DEL SERVICIO ---
+    # --- 2. DÍAS VENCIMIENTO DEL SERVICIO (CON CORRECCIÓN DE ENTREGADAS) ---
     def dias_vencimiento_servicio(row):
+        # Corrección: Si la planilla ya se entregó o la orden ya está para facturar, no hay días vencidos
+        if row['Planilla'] == 'SI' or row['ESTADO ORDEN'] == 'FACTURAR':
+            return "-"
+            
         dias = (hoy - row['Fecha']).days if pd.notnull(row['Fecha']) else 0
-        # Validamos que no muestre números negativos si la fecha no ha llegado
         return str(dias) if dias > 0 else "0"
 
     df['DIAS VENCIMIENTO SERVICIO'] = df.apply(dias_vencimiento_servicio, axis=1)
     
-    # Estado de la Planilla (Usa la columna DIAS_NUM como base matemática)
+    # Estado de la Planilla
     def asignar_estado_planilla(row):
         if row['ESTADO ORDEN'] == 'FACTURAR':
             return "FACTURAR"
@@ -215,7 +218,6 @@ if archivos_disponibles:
     
     st.markdown("**Detalle Operativo de Servicios**")
     
-    # Agregamos las dos columnas nuevas a la base que se va a mostrar
     columnas_base = ['Numero Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS VENCIMIENTO ORDEN', 'DIAS VENCIMIENTO SERVICIO']
     columnas_existentes = [col for col in columnas_base if col in df_filtrado.columns]
     
