@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 # --- CONFIGURACIÓN, ZONA HORARIA Y RETENCIÓN ---
 CARPETA_HISTORIAL = "historial_archivos"
-LIMITE_HISTORIAL = 0
+LIMITE_HISTORIAL = 1
 ZONA_COLOMBIA = timezone(timedelta(hours=-5))
 
 if not os.path.exists(CARPETA_HISTORIAL):
