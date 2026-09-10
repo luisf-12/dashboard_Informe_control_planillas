@@ -41,7 +41,7 @@ if archivo_subido is not None:
         f.write(archivo_subido.getbuffer())
         
     aplicar_politica_retencion(CARPETA_HISTORIAL, LIMITE_HISTORIAL)
-    st.success("Reporte guardado exitosamente. El dashboard se ha actualizado.")
+    st.success("Reporte guardado exitosamente.Presione F5 para actualizar.")
     st.rerun()
 
 # --- ESTRUCTURA VISUAL DEL PANEL LATERAL (SIDEBAR) ---
