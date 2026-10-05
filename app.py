@@ -157,7 +157,7 @@ if archivos_disponibles:
     st.divider()
     st.markdown(f"**Resumen General por Órdenes Únicas**")
     
-    total_ordenes = df_filtrado['Numero Orden'].nunique()
+    total_ordenes = df_filtrado['Número Orden'].nunique()
     ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Número Orden'].nunique()
     ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Número Orden'].nunique()
     ord_cerradas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA']['Número Orden'].nunique()
