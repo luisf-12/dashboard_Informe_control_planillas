@@ -82,12 +82,12 @@ if archivos_disponibles:
     df = pd.read_excel(ruta_leer)
     
     # --- TRANSFORMACIÓN DE DATOS ---
-    df['Numero Orden'] = df['Numero Orden'].astype(str).str.strip().str[:14]
+    df['Número Orden'] = df['Número Orden'].astype(str).str.strip().str[:14]
     df['Fecha'] = pd.to_datetime(df['Fecha'].astype(str).str.strip(), dayfirst=True, errors='coerce')
     df['Planilla'] = df['Planilla'].astype(str).str.strip().str.upper()
-    df['CANTIDAD VIAJES'] = df.groupby('Numero Orden')['Numero Orden'].transform('count')
-    df['FECHA_MAX'] = df.groupby('Numero Orden')['Fecha'].transform('max')
-    df['PLANILLAS_OK'] = df.groupby('Numero Orden')['Planilla'].transform(lambda x: (x == 'SI').all())
+    df['CANTIDAD VIAJES'] = df.groupby('Número Orden')['Número Orden'].transform('count')
+    df['FECHA_MAX'] = df.groupby('Número Orden')['Fecha'].transform('max')
+    df['PLANILLAS_OK'] = df.groupby('Número Orden')['Planilla'].transform(lambda x: (x == 'SI').all())
     
     # Fecha exacta de Colombia para validar reglas de negocio operativas
     hoy = pd.Timestamp(datetime.now(ZONA_COLOMBIA).date())
@@ -158,9 +158,9 @@ if archivos_disponibles:
     st.markdown(f"**Resumen General por Órdenes Únicas**")
     
     total_ordenes = df_filtrado['Numero Orden'].nunique()
-    ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Numero Orden'].nunique()
-    ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Numero Orden'].nunique()
-    ord_cerradas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA']['Numero Orden'].nunique()
+    ord_facturar = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'FACTURAR']['Número Orden'].nunique()
+    ord_abiertas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'ABIERTA']['Número Orden'].nunique()
+    ord_cerradas = df_filtrado[df_filtrado['ESTADO ORDEN'] == 'CERRADA']['Número Orden'].nunique()
     
     pct_ord_facturar = (ord_facturar / total_ordenes * 100) if total_ordenes > 0 else 0
     pct_ord_abiertas = (ord_abiertas / total_ordenes * 100) if total_ordenes > 0 else 0
@@ -211,7 +211,7 @@ if archivos_disponibles:
     df_mostrar = df_filtrado[columnas_existentes].copy()
     
     renombres = {
-        'Numero Orden': 'ORDEN SERVICIO',
+        'Número Orden': 'ORDEN SERVICIO',
         'Paciente': 'PACIENTE',
         'Fecha': 'FECHA DEL SERVICIO',
         'Vehiculo': 'VEHICULO',
