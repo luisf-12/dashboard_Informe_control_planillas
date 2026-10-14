@@ -205,7 +205,7 @@ if archivos_disponibles:
     st.markdown("**Detalle Operativo de Servicios**")
     
     # Integramos directamente los motores numéricos a la tabla
-    columnas_base = ['Número Orden', 'Paciente', 'Fecha', 'Vehiculo', 'TIPO', 'ESTADO PLANILLA', 'DIAS_NUM_ORDEN', 'DIAS_NUM_SERVICIO']
+    columnas_base = ['Número Orden', 'Paciente', 'Fecha', 'Vehículo', 'TIPO', 'ESTADO PLANILLA', 'DIAS_NUM_ORDEN', 'DIAS_NUM_SERVICIO']
     columnas_existentes = [col for col in columnas_base if col in df_filtrado.columns]
     
     df_mostrar = df_filtrado[columnas_existentes].copy()
@@ -214,7 +214,7 @@ if archivos_disponibles:
         'Número Orden': 'ORDEN SERVICIO',
         'Paciente': 'PACIENTE',
         'Fecha': 'FECHA DEL SERVICIO',
-        'Vehiculo': 'VEHICULO',
+        'Vehículo': 'VEHÍCULO',
         'TIPO': 'TIPO',
         'DIAS_NUM_ORDEN': 'DÍAS VENC. ORDEN',
         'DIAS_NUM_SERVICIO': 'DÍAS VENC. SERVICIO'
